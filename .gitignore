@@ -1,0 +1,8 @@
+*.ipynb
+.ipynb_checkpoints
+*.png
+*.csv
+*.text
+*.txt
+*.h5
+/results
