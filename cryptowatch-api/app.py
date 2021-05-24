@@ -1,39 +1,44 @@
-from flask import Flask, request, jsonify
-from lstm import lstm
+from typing import Optional
+from fastapi import FastAPI, Query, Path, Request 
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+import uvicorn
 import os
 
+from lstm import lstm
 
-# Load model
+app = FastAPI()
 
-# Initialize a Flask app
-app = Flask(__name__)
+templates = Jinja2Templates(directory='templates')
+@app.get('/')
+async def index_page(request: Request):
+    return templates.TemplateResponse('index.html', {'request': request})
 
-# Create an API endpoint
-@app.route('/')
-def hello_world():
-    return 'Hello World!!!'
+@app.get('/api/predict')
+async def predict(
+    market: Optional[str] = Query(
+        'binance',
+        title='The name of exchange',
+        description='The name of crypto exchange such as binance, bitflyer ...'
+    ),
+    symbol: Optional[str] = Query(
+        'btcusdt',
+        title='The name of crypto pairs',
+        description='The name of crypto pairs such as btcusdt, ethusdt ...'
+    ),
+    freq: Optional[int] = Query(
+        7200,
+        title='The frequency of cryptowatch data',
+        description='Time frequency (second) of cryptowatch time series data. (e.g. 7200)'
+    )
+):
+    res = {
+        'market': market,
+        'symbol': symbol,
+        'frequency': freq,
+        'predict': lstm(market, symbol, freq)
+    }
+    return res
 
-
-@app.route('/api/predict', methods=['GET'])
-def predict():
-    if request.method == 'GET':
-        query_parameters = request.args
-        if query_parameters:
-            market = query_parameters.get('market')
-            symbol = query_parameters.get('symbol')
-            freq = query_parameters.get('freq')
-            result = {
-                'maeket': market,
-                'symbol': symbol,
-                'frequency': freq,
-                'predict': lstm(market, symbol, freq)
-            }
-            return jsonify(result)
-        else:
-            return 'Select Symbol like /api/predict?market=binance&symbol=btcjpy&freq=7200'
-    else:
-        return 'Do GET action!!'
-
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000)) 
-    app.run(host ='0.0.0.0', port=port, debug=True)
+if __name__ == '__main__':
+    uvicorn.run(app, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
